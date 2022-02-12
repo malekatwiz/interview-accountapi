@@ -29,5 +29,12 @@ func main() {
 	req.AccountData.Attributes.Names = append(req.AccountData.Attributes.Names, "Malek A")
 	res := client.CreateAccount(req)
 	fmt.Println("Account resource: " + res.Data.Links.CurrentAccount)
-	fmt.Println(res.Errors)
+
+	fmt.Println("Fetching resource: " + res.Data.Links.CurrentAccount)
+	fetchAccount := client.FetchAccount(res.Data.Links.CurrentAccount)
+	if fetchAccount.Errors != nil {
+		println("cannot find resource " + res.Data.Links.CurrentAccount)
+	} else {
+		println("Resource ID " + fetchAccount.Data.AccountData.Id + "found")
+	}
 }

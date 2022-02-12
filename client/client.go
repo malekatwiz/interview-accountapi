@@ -6,10 +6,10 @@ import (
 	"net/http"
 )
 
-const baseUrl = "http://localhost:8080/v1"
+const baseUrl = "http://localhost:8080"
 
 func GetApiStatus() bool {
-	response, err := http.Get(baseUrl + "/health")
+	response, err := http.Get(baseUrl + "/v1/health")
 	if err == nil && response.StatusCode == 200 {
 		return true
 	}
@@ -24,7 +24,7 @@ func CreateAccount(request CreateAccountRequest) AccountsApiResponse {
 		return creationResult
 	}
 
-	res, err := http.Post(baseUrl+"/organisation/accounts", "application/vnd.api+json", bytes.NewBuffer(reqBody))
+	res, err := http.Post(baseUrl+"/v1/organisation/accounts", "application/vnd.api+json", bytes.NewBuffer(reqBody))
 	if err != nil || res.StatusCode < 200 && res.StatusCode > 302 {
 		creationResult.Errors = append(creationResult.Errors, err.Error())
 		return creationResult
@@ -39,4 +39,19 @@ func CreateAccount(request CreateAccountRequest) AccountsApiResponse {
 
 	creationResult.Data = data
 	return creationResult
+}
+
+func FetchAccount(resourceLocation string) AccountsApiResponse {
+	var response AccountsApiResponse
+	res, err := http.Get(baseUrl + resourceLocation)
+	if err != nil {
+		response.Errors = append(response.Errors, err.Error())
+	}
+
+	defer res.Body.Close()
+
+	var account AccountRequest
+	json.NewDecoder(res.Body).Decode(&account)
+	response.Data = account
+	return response
 }
