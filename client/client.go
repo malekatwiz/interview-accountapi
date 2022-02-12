@@ -55,3 +55,13 @@ func FetchAccount(resourceLocation string) AccountsApiResponse {
 	response.Data = account
 	return response
 }
+
+func DeleteAccount(resourceId string) error {
+	req, e := http.NewRequest("DELETE", baseUrl+"/v1/organisation/accounts/"+resourceId+"?version=0", bytes.NewBuffer(nil))
+	if e != nil {
+		return e
+	}
+	httpClient := &http.Client{}
+	httpClient.Do(req)
+	return nil
+}

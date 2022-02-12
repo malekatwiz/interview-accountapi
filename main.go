@@ -37,4 +37,9 @@ func main() {
 	} else {
 		println("Resource ID " + fetchAccount.Data.AccountData.Id + "found")
 	}
+
+	delResult := client.DeleteAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4e3caa5")
+	if delResult != nil {
+		println(delResult)
+	}
 }
