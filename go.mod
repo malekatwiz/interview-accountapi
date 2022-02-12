@@ -1,3 +1,5 @@
-module github.com/malekatwiz/interview-accountapi/accounts/client
+module apiclient
 
 go 1.17
+
+require github.com/google/uuid v1.3.0
