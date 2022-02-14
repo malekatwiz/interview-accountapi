@@ -3,17 +3,92 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
-const baseUrl = "http://localhost:8080"
+type ApiClient interface {
+	SetupAccount() (Account, []string)
+}
+
+const baseUrl = "http://localhost:8080/" + ApiVersion
+const ApiVersion = "v1"
 
 func GetApiStatus() bool {
-	response, err := http.Get(baseUrl + "/v1/health")
-	if err == nil && response.StatusCode == 200 {
+	_, statusCode, e := sendRequest("GET", "/health", "")
+	if e == nil && statusCode == 200 {
 		return true
 	}
 	return false
+}
+
+func sendRequest(method string, endpoint string, reqBody string) ([]byte, int, error) {
+	req, e := http.NewRequest(method, baseUrl+endpoint, bytes.NewBuffer([]byte(reqBody)))
+	if e != nil {
+		log.Fatal(e.Error())
+	}
+
+	httpClient := &http.Client{}
+	res, e := httpClient.Do(req)
+	if e != nil {
+		log.Fatal(e.Error())
+	}
+
+	defer res.Body.Close()
+	resContent, e := ioutil.ReadAll(res.Body)
+
+	return resContent, res.StatusCode, nil
+}
+
+func mapToCreateAccount(account OrganisationAccount) AccountRequest {
+	return AccountRequest{
+		AccountData: AccountData{
+			Id:             uuid.NewString(),
+			OrganisationId: uuid.NewString(),
+			Type:           "accounts",
+			Version:        1,
+			Attributes: AccountAttributes{
+				Country:  account.Country,
+				BankId:   account.BankId,
+				BankCode: account.BankCode,
+				Names:    []string{account.Name},
+			},
+		},
+	}
+}
+
+func (orgAccount OrganisationAccount) SetupAccount() (Account, []string) {
+	request := mapToCreateAccount(orgAccount)
+
+	var account AccountRequest
+	var errors []string
+	reqBody, e := json.Marshal(request)
+	if e != nil {
+		log.Fatal(e)
+		errors = append(errors, e.Error())
+		return Account{account.AccountData.Id}, errors
+	}
+
+	resBody, statusCode, e := sendRequest("POST", "/organisation/accounts", string(reqBody))
+	if e != nil {
+		log.Fatal(e.Error()) // TODO: might be unnecessary
+	}
+
+	// casting from/to
+	if statusCode >= 200 && statusCode <= 299 { // successful creation
+		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&account)
+	} else if statusCode >= 400 && statusCode <= 499 { // bad request
+		var apiErr ApiError
+		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&apiErr)
+		errors = append(errors, strings.Split(apiErr.ErrorMessage, "\n")...)
+	} else {
+		errors = append(errors, "Something went worng, try again.")
+	}
+	return Account{Id: account.AccountData.Id}, errors
 }
 
 func CreateAccount(request CreateAccountRequest) AccountsApiResponse {
@@ -24,8 +99,8 @@ func CreateAccount(request CreateAccountRequest) AccountsApiResponse {
 		return creationResult
 	}
 
-	res, err := http.Post(baseUrl+"/v1/organisation/accounts", "application/vnd.api+json", bytes.NewBuffer(reqBody))
-	if err != nil || res.StatusCode < 200 && res.StatusCode > 302 {
+	res, err := http.Post(baseUrl+"/organisation/accounts", "application/vnd.api+json", bytes.NewBuffer(reqBody))
+	if err != nil || res.StatusCode < 200 || res.StatusCode > 299 {
 		creationResult.Errors = append(creationResult.Errors, err.Error())
 		return creationResult
 	}
@@ -57,7 +132,7 @@ func FetchAccount(resourceLocation string) AccountsApiResponse {
 }
 
 func DeleteAccount(resourceId string) error {
-	req, e := http.NewRequest("DELETE", baseUrl+"/v1/organisation/accounts/"+resourceId+"?version=0", bytes.NewBuffer(nil))
+	req, e := http.NewRequest("DELETE", baseUrl+"/organisation/accounts/"+resourceId+"?version=0", bytes.NewBuffer(nil))
 	if e != nil {
 		return e
 	}
