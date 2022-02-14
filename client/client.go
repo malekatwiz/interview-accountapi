@@ -40,11 +40,17 @@ func sendRequest(method string, endpoint string, reqBody string) ([]byte, int, e
 
 	defer res.Body.Close()
 	resContent, e := ioutil.ReadAll(res.Body)
+	if e != nil {
+		log.Fatal(e)
+	}
 
 	return resContent, res.StatusCode, nil
 }
 
 func mapToCreateAccount(account OrganisationAccount) AccountRequest {
+	if (account == OrganisationAccount{} || account.Country == "") {
+		return AccountRequest{}
+	}
 	return AccountRequest{
 		AccountData: AccountData{
 			Id:             uuid.NewString(),
@@ -62,10 +68,13 @@ func mapToCreateAccount(account OrganisationAccount) AccountRequest {
 }
 
 func (orgAccount OrganisationAccount) SetupAccount() (Account, []string) {
+	if (orgAccount == OrganisationAccount{}) {
+		return Account{}, []string{"Invalid empty input."}
+	}
 	request := mapToCreateAccount(orgAccount)
 
-	var account AccountRequest
 	var errors []string
+	var account AccountRequest
 	reqBody, e := json.Marshal(request)
 	if e != nil {
 		log.Fatal(e)
