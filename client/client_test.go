@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestSetupClient_ReturnsNoErrors_WhenCreationIsSuccessful(t *testing.T) {
+func TestCreateNewAccount_ReturnsNoErrors_WhenCreationIsSuccessful(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(200)
 		rw.Write([]byte(`{
@@ -43,7 +43,7 @@ func TestSetupClient_ReturnsNoErrors_WhenCreationIsSuccessful(t *testing.T) {
 	}
 }
 
-func TestSetupAccount_ReturnsEmptyAccountWithError_WhenInputIsEmpty(t *testing.T) {
+func TestCreateNewAccount_ReturnsEmptyAccountWithError_WhenInputIsEmpty(t *testing.T) {
 	apiClient := InitializeClient("http://localhost:8080/", "v1")
 	r, l := apiClient.CreateNewAccount(OrganisationAccount{})
 
@@ -52,7 +52,7 @@ func TestSetupAccount_ReturnsEmptyAccountWithError_WhenInputIsEmpty(t *testing.T
 	}
 }
 
-func TestSetupAccount_ReturnsValidationErrors_WhenInputInvalid(t *testing.T) {
+func TestCreateNewAccount_ReturnsValidationErrors_WhenInputInvalid(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(400)
 		rw.Write([]byte(""))
@@ -69,7 +69,7 @@ func TestSetupAccount_ReturnsValidationErrors_WhenInputInvalid(t *testing.T) {
 	}
 }
 
-func TestSetupAccount_ReturnsError_WhenCreateRequestFails(t *testing.T) {
+func TestCreateNewAccount_ReturnsError_WhenCreateRequestFails(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(500)
 		rw.Write([]byte(""))
@@ -87,6 +87,105 @@ func TestSetupAccount_ReturnsError_WhenCreateRequestFails(t *testing.T) {
 
 	if (r != Account{}) {
 		t.Errorf("expected empty Account")
+	}
+}
+
+func TestFetchAccount_ReturnsError_WhenAccountIdIsEmpty(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(200)
+		rw.Write([]byte(`{
+			"data": {
+				"attributes": {
+					"alternative_names": null,
+					"country": "CA",
+					"name": [
+						"M"
+					]
+				},
+				"created_on": "2022-02-14T14:11:46.906Z",
+				"id": "49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36",
+				"modified_on": "2022-02-14T14:11:46.906Z",
+				"organisation_id": "78398917-e6bd-4671-bc99-666c5015af99",
+				"type": "accounts",
+				"version": 0
+			},
+			"links": {
+				"self": "/v1/organisation/accounts/49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36"
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := InitializeClient(server.URL, "v1")
+	_, l := apiClient.FetchAccount("")
+	if len(l) != 1 {
+		t.Errorf("expected one error due to empty account id")
+	}
+}
+
+func TestFetchAccount_ReturnsError_WhenAccountIdIsDefault(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(200)
+		rw.Write([]byte(`{
+			"data": {
+				"attributes": {
+					"alternative_names": null,
+					"country": "CA",
+					"name": [
+						"M"
+					]
+				},
+				"created_on": "2022-02-14T14:11:46.906Z",
+				"id": "49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36",
+				"modified_on": "2022-02-14T14:11:46.906Z",
+				"organisation_id": "78398917-e6bd-4671-bc99-666c5015af99",
+				"type": "accounts",
+				"version": 0
+			},
+			"links": {
+				"self": "/v1/organisation/accounts/49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36"
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := InitializeClient(server.URL, "v1")
+	_, l := apiClient.FetchAccount("00000000-0000-0000-0000-000000000000")
+	if len(l) != 1 {
+		t.Errorf("expected one error due to default/invalid account id")
+	}
+}
+
+func TestFetchAccount_ReturnsErrors_WhenRequestFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(500)
+		rw.Write([]byte(`{
+			"data": {
+				"attributes": {
+					"alternative_names": null,
+					"country": "CA",
+					"name": [
+						"M"
+					]
+				},
+				"created_on": "2022-02-14T14:11:46.906Z",
+				"id": "49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36",
+				"modified_on": "2022-02-14T14:11:46.906Z",
+				"organisation_id": "78398917-e6bd-4671-bc99-666c5015af99",
+				"type": "accounts",
+				"version": 0
+			},
+			"links": {
+				"self": "/v1/organisation/accounts/49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36"
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := InitializeClient(server.URL, "v1")
+	_, l := apiClient.FetchAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
+	if len(l) == 0 {
+		t.Errorf("expected errors")
 	}
 }
 

@@ -12,7 +12,6 @@ import (
 )
 
 type ApiClient interface {
-	SetupAccount() (Account, []string)
 	CreateNewAccount(orgAccount OrganisationAccount) (Account, []string)
 }
 
@@ -136,44 +135,26 @@ func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Acc
 	return Account{Id: account.AccountData.Id}, errors
 }
 
-func CreateAccount(request CreateAccountRequest) AccountsApiResponse {
-	var creationResult AccountsApiResponse
-	reqBody, jsonErr := json.Marshal(request) // TODO: handle json errors.
-	if jsonErr != nil {
-		creationResult.Errors = append(creationResult.Errors, "Invalid JSON input")
-		return creationResult
-	}
-
-	res, err := http.Post(baseUrl+"/organisation/accounts", "application/vnd.api+json", bytes.NewBuffer(reqBody))
-	if err != nil || res.StatusCode < 200 || res.StatusCode > 299 {
-		creationResult.Errors = append(creationResult.Errors, err.Error())
-		return creationResult
-	}
-
-	defer res.Body.Close()
-	var data AccountRequest
-	jErr := json.NewDecoder(res.Body).Decode(&data)
-	if jErr != nil {
-		creationResult.Errors = append(creationResult.Errors, jErr.Error())
-	}
-
-	creationResult.Data = data
-	return creationResult
-}
-
-func FetchAccount(resourceLocation string) AccountsApiResponse {
-	var response AccountsApiResponse
-	res, err := http.Get(baseUrl + resourceLocation)
-	if err != nil {
-		response.Errors = append(response.Errors, err.Error())
-	}
-
-	defer res.Body.Close()
-
+func (ApiClientConnection) FetchAccount(accountId string) (AccountRequest, []string) {
 	var account AccountRequest
-	json.NewDecoder(res.Body).Decode(&account)
-	response.Data = account
-	return response
+	id, e := uuid.Parse(accountId)
+	if e != nil || id == uuid.Nil {
+		return account, []string{"invalid account id"}
+	}
+
+	resBody, statusCode, e := sendRequest("GET", "/organisation/accounts/"+accountId, "")
+	if e != nil {
+		log.Fatal(e.Error())
+		return account, strings.Split(e.Error(), "\n")
+	}
+	if statusCode >= 200 && statusCode <= 299 { // successful creation
+		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&account)
+	} else {
+		var apiErr ApiError
+		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&apiErr)
+		return account, strings.Split(apiErr.ErrorMessage, "\n")
+	}
+	return account, nil
 }
 
 func DeleteAccount(resourceId string) error {
