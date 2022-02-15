@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,21 +34,21 @@ func TestCreateNewAccount_ReturnsNoErrors_WhenCreationIsSuccessful(t *testing.T)
 	defer server.Close()
 
 	apiClient := InitializeClient(server.URL, "v1")
-	r, l := apiClient.CreateNewAccount(OrganisationAccount{
-		Country: "CA",
-		Name:    "John Doe Inc.",
-	})
+
+	var a OrganisationAccount
+	a = a.WithAlternativeName("A.").Build("CA", "Malek")
+	r, l := apiClient.CreateNewAccount(a)
 
 	if (len(l) > 0 || r == Account{}) {
-		t.Errorf("expected no errors but received %s", string(rune(len(l))))
+		t.Errorf("expected no errors but received %s", fmt.Sprint(len(l)))
 	}
 }
 
 func TestCreateNewAccount_ReturnsEmptyAccountWithError_WhenInputIsEmpty(t *testing.T) {
 	apiClient := InitializeClient("http://localhost:8080/", "v1")
-	r, l := apiClient.CreateNewAccount(OrganisationAccount{})
+	_, l := apiClient.CreateNewAccount(OrganisationAccount{})
 
-	if (l == nil || r != Account{}) {
+	if len(l) < 1 {
 		t.Errorf("expected errors")
 	}
 }
@@ -60,8 +61,8 @@ func TestCreateNewAccount_ReturnsValidationErrors_WhenInputInvalid(t *testing.T)
 	defer server.Close()
 	apiClient := InitializeClient(server.URL, "v1")
 	_, l := apiClient.CreateNewAccount(OrganisationAccount{
-		Country: "AAAA",
-		Name:    "John Doe Inc.",
+		Country:    "AAAA",
+		HolderName: []string{""},
 	})
 
 	if len(l) <= 0 {
@@ -77,12 +78,12 @@ func TestCreateNewAccount_ReturnsError_WhenCreateRequestFails(t *testing.T) {
 	defer server.Close()
 	apiClient := InitializeClient(server.URL, "v1")
 	r, l := apiClient.CreateNewAccount(OrganisationAccount{
-		Country: "CA",
-		Name:    "John Doe Inc.",
+		Country:    "CA",
+		HolderName: []string{""},
 	})
 
 	if len(l) <= 0 {
-		t.Errorf("expected errors, received %s", string(rune(len(l))))
+		t.Errorf("expected errors, received %s", fmt.Sprint(len(l)))
 	}
 
 	if (r != Account{}) {
@@ -218,7 +219,7 @@ func TestFetchAccount_ReturnsNoErrors_WhenAccountIdExistsinSystem(t *testing.T) 
 	apiClient := InitializeClient(server.URL, "v1")
 	_, l := apiClient.FetchAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
 	if len(l) > 0 {
-		t.Errorf("expected no errors, received %s", string(rune(len(l))))
+		t.Errorf("expected no errors, received %s", fmt.Sprint(len(l)))
 	}
 }
 
@@ -293,46 +294,3 @@ func TestDeleteAccount_ReturnsError_WhenDeleteAccountFails(t *testing.T) {
 		t.Errorf("expected an error")
 	}
 }
-
-/*
-func TestSetupAccount_ReturnsCreatedAccountId_WhenMinimumInputIsValid(t *testing.T) {
-	apiClient := InitializeClient("", "")
-	apiClient.CreateNewAccount()
-	r, l := ApiClient.SetupAccount(OrganisationAccount{
-		Country: "CA",
-		Name:    "John Doe Inc.",
-	})
-
-	if l != nil {
-		t.Fail()
-	}
-
-	validId := uuid.MustParse(r.Id)
-	if validId == uuid.Nil {
-		t.Fail()
-	}
-}
-
-func TestSetupAccount_ReturnsEmptyAccountWithError_WhenInputIsEmpty(t *testing.T) {
-	r, l := ApiClient.SetupAccount(OrganisationAccount{})
-
-	if (l == nil || r != Account{}) {
-		t.Fail()
-	}
-}
-
-func TestSetupAccount_ReturnsError_WhenAccountInfoMissing(t *testing.T) {
-	_, l := ApiClient.SetupAccount(OrganisationAccount{})
-	if len(l) != 1 {
-		t.Fail()
-	}
-}
-
-func TestSetupAccount_ReturnsValidationErrors_WhenInputFieldInvalid(t *testing.T) {
-	_, l := ApiClient.SetupAccount(OrganisationAccount{
-		Country: "AAA",
-	})
-	if len(l) <= 0 {
-		t.Fail()
-	}
-}*/

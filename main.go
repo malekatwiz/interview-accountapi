@@ -8,7 +8,6 @@ import (
 func main() {
 	fmt.Println("App is starting..")
 	apiClient := client.InitializeClient("http://localhost:8080/", "v1")
-	apiClient.CreateNewAccount(client.OrganisationAccount{})
 	//var apiClient client.ApiClient
 
 	/*fmt.Println("Creating new account...")
@@ -36,12 +35,13 @@ func main() {
 		println(delResult)
 	}*/
 
-	var c client.ApiClient
-	c.CreateNewAccount(client.OrganisationAccount{
-		Country:  "CAD",
-		BankCode: "CACPA",
-		Name:     "Org A",
-	})
-	c.FetchAccount("")
-	c.DeleteAccount("")
+	var myAccount client.OrganisationAccount
+	myAccount = myAccount.WithBank("CACPA", "").WithCurrency("CAD").Build("CA", "Malek A")
+	_, e := apiClient.CreateNewAccount(myAccount)
+	if e != nil {
+		fmt.Printf("Failed to create new account, %s ", e[:])
+	}
+
+	//c.FetchAccount("")
+	//c.DeleteAccount("")
 }

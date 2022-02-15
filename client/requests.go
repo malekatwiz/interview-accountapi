@@ -33,17 +33,8 @@ type AccountRequest struct {
 	Links       AccountLinks `json:"links"`
 }
 
-type CreateAccountRequest struct {
-	AccountData AccountData `json:"data"`
-}
-
 type AccountLinks struct {
 	FirstAccount   string `json:"first"`
 	LastAccount    string `json:"last"`
 	CurrentAccount string `json:"self"`
-}
-
-type AccountsApiResponse struct {
-	Data   AccountRequest
-	Errors []string
 }

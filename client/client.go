@@ -59,14 +59,14 @@ func mapToCreateAccount(account OrganisationAccount) AccountRequest {
 				Country:  account.Country,
 				BankId:   account.BankId,
 				BankCode: account.BankCode,
-				Names:    []string{account.Name},
+				Names:    account.HolderName[:],
 			},
 		},
 	}
 }
 
 func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Account, []string) {
-	if (orgAccount == OrganisationAccount{}) {
+	if !orgAccount.IsReady() {
 		return Account{}, []string{"Invalid empty input."}
 	}
 	request := mapToCreateAccount(orgAccount)
