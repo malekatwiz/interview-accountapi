@@ -36,10 +36,12 @@ func main() {
 		println(delResult)
 	}*/
 
-	var ic client.ApiClient
-	ic.CreateNewAccount(client.OrganisationAccount{
+	var c client.ApiClient
+	c.CreateNewAccount(client.OrganisationAccount{
 		Country:  "CAD",
 		BankCode: "CACPA",
 		Name:     "Org A",
 	})
+	c.FetchAccount("")
+	c.DeleteAccount("")
 }

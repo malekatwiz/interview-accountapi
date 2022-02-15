@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 
 type ApiClient interface {
 	CreateNewAccount(orgAccount OrganisationAccount) (Account, []string)
+	FetchAccount(accountId string) (AccountRequest, []string)
+	DeleteAccount(accountId string) error
 }
 
 type ApiClientConnection struct{}
@@ -21,9 +24,6 @@ func InitializeClient(baseUrl string, apiVersion string) ApiClientConnection {
 	apiUrl = baseUrl + "/" + apiVersion
 	return ApiClientConnection{}
 }
-
-const baseUrl = "http://localhost:8080/" + ApiVersion
-const ApiVersion = "v1"
 
 var apiUrl string
 
@@ -63,39 +63,6 @@ func mapToCreateAccount(account OrganisationAccount) AccountRequest {
 			},
 		},
 	}
-}
-
-func (orgAccount OrganisationAccount) SetupAccount() (Account, []string) {
-	if (orgAccount == OrganisationAccount{}) {
-		return Account{}, []string{"Invalid empty input."}
-	}
-	request := mapToCreateAccount(orgAccount)
-
-	var errors []string
-	var account AccountRequest
-	reqBody, e := json.Marshal(request)
-	if e != nil {
-		log.Fatal(e)
-		errors = append(errors, e.Error())
-		return Account{account.AccountData.Id}, errors
-	}
-
-	resBody, statusCode, e := sendRequest("POST", "/organisation/accounts", string(reqBody))
-	if e != nil {
-		log.Fatal(e.Error()) // TODO: might be unnecessary
-	}
-
-	// casting from/to
-	if statusCode >= 200 && statusCode <= 299 { // successful creation
-		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&account)
-	} else if statusCode >= 400 && statusCode <= 499 { // bad request
-		var apiErr ApiError
-		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&apiErr)
-		errors = append(errors, strings.Split(apiErr.ErrorMessage, "\n")...)
-	} else {
-		errors = append(errors, "Something went worng, try again.")
-	}
-	return Account{Id: account.AccountData.Id}, errors
 }
 
 func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Account, []string) {
@@ -157,12 +124,24 @@ func (ApiClientConnection) FetchAccount(accountId string) (AccountRequest, []str
 	return account, nil
 }
 
-func DeleteAccount(resourceId string) error {
-	req, e := http.NewRequest("DELETE", baseUrl+"/organisation/accounts/"+resourceId+"?version=0", bytes.NewBuffer(nil))
+func (ApiClientConnection) DeleteAccount(accountId string) error {
+	id, e := uuid.Parse(accountId)
+	if e != nil || id == uuid.Nil {
+		return errors.New("invalid account id")
+	}
+	_, statusCode, e := sendRequest("DELETE", "/organisation/accounts/"+accountId+"?version=1", "")
 	if e != nil {
+		log.Fatal(e)
 		return e
 	}
-	httpClient := &http.Client{}
-	httpClient.Do(req)
-	return nil
+
+	if statusCode == 204 {
+		return nil
+	}
+
+	if statusCode == 404 {
+		return errors.New("account is not found")
+	}
+
+	return errors.New("something went wrong, try again")
 }
