@@ -13,21 +13,23 @@ import (
 
 type ApiClient interface {
 	SetupAccount() (Account, []string)
+	CreateNewAccount(orgAccount OrganisationAccount) (Account, []string)
+}
+
+type ApiClientConnection struct{}
+
+func InitializeClient(baseUrl string, apiVersion string) ApiClientConnection {
+	apiUrl = baseUrl + "/" + apiVersion
+	return ApiClientConnection{}
 }
 
 const baseUrl = "http://localhost:8080/" + ApiVersion
 const ApiVersion = "v1"
 
-func GetApiStatus() bool {
-	_, statusCode, e := sendRequest("GET", "/health", "")
-	if e == nil && statusCode == 200 {
-		return true
-	}
-	return false
-}
+var apiUrl string
 
 func sendRequest(method string, endpoint string, reqBody string) ([]byte, int, error) {
-	req, e := http.NewRequest(method, baseUrl+endpoint, bytes.NewBuffer([]byte(reqBody)))
+	req, e := http.NewRequest(method, apiUrl+endpoint, bytes.NewBuffer([]byte(reqBody)))
 	if e != nil {
 		log.Fatal(e.Error())
 	}
@@ -48,9 +50,6 @@ func sendRequest(method string, endpoint string, reqBody string) ([]byte, int, e
 }
 
 func mapToCreateAccount(account OrganisationAccount) AccountRequest {
-	if (account == OrganisationAccount{} || account.Country == "") {
-		return AccountRequest{}
-	}
 	return AccountRequest{
 		AccountData: AccountData{
 			Id:             uuid.NewString(),
@@ -96,6 +95,43 @@ func (orgAccount OrganisationAccount) SetupAccount() (Account, []string) {
 		errors = append(errors, strings.Split(apiErr.ErrorMessage, "\n")...)
 	} else {
 		errors = append(errors, "Something went worng, try again.")
+	}
+	return Account{Id: account.AccountData.Id}, errors
+}
+
+func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Account, []string) {
+	if (orgAccount == OrganisationAccount{}) {
+		return Account{}, []string{"Invalid empty input."}
+	}
+	request := mapToCreateAccount(orgAccount)
+
+	var errors []string
+	var account AccountRequest
+	reqBody, e := json.Marshal(request)
+	if e != nil {
+		log.Fatal(e)
+		errors = append(errors, e.Error())
+		return Account{}, errors
+	}
+
+	resBody, statusCode, e := sendRequest("POST", "/organisation/accounts", string(reqBody))
+	if e != nil {
+		log.Fatal(e.Error()) // TODO: might be unnecessary
+	}
+
+	// casting from/to
+	if statusCode >= 200 && statusCode <= 299 { // successful creation
+		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&account)
+	} else if statusCode >= 400 && statusCode <= 499 { // bad request
+		var apiErr ApiError
+		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&apiErr)
+		errors = append(errors, strings.Split(apiErr.ErrorMessage, "\n")...)
+	} else {
+		errors = append(errors, "Something went worng, try again.")
+	}
+
+	if len(errors) > 0 {
+		return Account{}, errors
 	}
 	return Account{Id: account.AccountData.Id}, errors
 }

@@ -3,19 +3,14 @@ package main
 import (
 	"apiclient/client"
 	"fmt"
-	"os"
-	"strings"
 )
 
 func main() {
 	fmt.Println("App is starting..")
+	apiClient := client.InitializeClient("http://localhost:8080/", "v1")
+	apiClient.CreateNewAccount(client.OrganisationAccount{})
 	//var apiClient client.ApiClient
-	apiIsHealthy := client.GetApiStatus()
-	if !apiIsHealthy {
-		fmt.Println("Accounts API is down, exiting..")
-		os.Exit(1)
-	}
-	fmt.Println("Accounts API is healthy.")
+
 	/*fmt.Println("Creating new account...")
 	var req client.CreateAccountRequest
 	req.AccountData.Id = uuid.New().String()
@@ -41,16 +36,10 @@ func main() {
 		println(delResult)
 	}*/
 
-	c, e := client.ApiClient.SetupAccount(client.OrganisationAccount{
+	var ic client.ApiClient
+	ic.CreateNewAccount(client.OrganisationAccount{
 		Country:  "CAD",
 		BankCode: "CACPA",
 		Name:     "Org A",
 	})
-
-	if e != nil {
-		println(strings.Join(e, ""))
-	} else {
-		println(c.Id)
-	}
-
 }
