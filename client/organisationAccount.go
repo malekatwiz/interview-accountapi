@@ -20,7 +20,7 @@ const maxAltNames = 3
 var isReady bool
 
 func (OrganisationAccount) IsReady() bool {
-	return true && isReady
+	return isReady
 }
 
 // Maximum of 4 calls/Names extra items will be discarded.
@@ -70,4 +70,9 @@ func (OrganisationAccount) Build(countryCode string, holderName string) Organisa
 	orgAccount.WithName(holderName)
 	isReady = true
 	return orgAccount
+}
+
+func (OrganisationAccount) Cleanup() {
+	orgAccount = OrganisationAccount{}
+	isReady = false
 }

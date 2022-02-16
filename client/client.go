@@ -66,12 +66,12 @@ func mapToCreateAccount(account OrganisationAccount) AccountRequest {
 }
 
 func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Account, []string) {
+	var errors []string
 	if !orgAccount.IsReady() {
-		return Account{}, []string{"Invalid empty input."}
+		return Account{}, append(errors, "Invalid empty input.")
 	}
 	request := mapToCreateAccount(orgAccount)
 
-	var errors []string
 	var account AccountRequest
 	reqBody, e := json.Marshal(request)
 	if e != nil {
