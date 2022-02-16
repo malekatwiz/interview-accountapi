@@ -45,7 +45,7 @@ func TestCreateNewAccount_ReturnsNoErrors_WhenCreationIsSuccessful(t *testing.T)
 }
 
 func TestCreateNewAccount_ReturnsEmptyAccountWithError_WhenInputIsEmpty(t *testing.T) {
-	apiClient := InitializeClient("http://localhost:8080/", "v1")
+	apiClient := InitializeClient("http://accountapi:8080", "v1")
 	_, l := apiClient.CreateNewAccount(OrganisationAccount{})
 
 	if len(l) != 1 {
