@@ -20,14 +20,14 @@ type ApiClient interface {
 
 type ApiClientConnection struct{}
 
-func InitializeClient(baseUrl string, apiVersion string) ApiClientConnection {
+func InitializeClient(baseUrl string, apiVersion string) *ApiClientConnection {
 	apiUrl = baseUrl + "/" + apiVersion
-	return ApiClientConnection{}
+	return new(ApiClientConnection)
 }
 
 var apiUrl string
 
-func sendRequest(method string, endpoint string, reqBody string) ([]byte, int, error) {
+func sendRequest(method string, endpoint string, reqBody string) ([]byte, int) {
 	req, e := http.NewRequest(method, apiUrl+endpoint, bytes.NewBuffer([]byte(reqBody)))
 	if e != nil {
 		log.Fatal(e.Error())
@@ -45,7 +45,7 @@ func sendRequest(method string, endpoint string, reqBody string) ([]byte, int, e
 		log.Fatal(e)
 	}
 
-	return resContent, res.StatusCode, nil
+	return resContent, res.StatusCode
 }
 
 func mapToCreateAccount(account OrganisationAccount) AccountRequest {
@@ -71,13 +71,13 @@ func mapToCreateAccount(account OrganisationAccount) AccountRequest {
 }
 
 func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Account, []string) {
-	var errors []string
 	if !orgAccount.IsReady() {
-		return Account{}, append(errors, "Invalid empty input.")
+		return Account{}, []string{"Invalid empty input."}
 	}
 	request := mapToCreateAccount(orgAccount)
 
 	var account AccountRequest
+	var errors []string
 	reqBody, e := json.Marshal(request)
 	if e != nil {
 		log.Fatal(e)
@@ -85,12 +85,8 @@ func (ApiClientConnection) CreateNewAccount(orgAccount OrganisationAccount) (Acc
 		return Account{}, errors
 	}
 
-	resBody, statusCode, e := sendRequest("POST", "/organisation/accounts", string(reqBody))
-	if e != nil {
-		log.Fatal(e.Error()) // TODO: might be unnecessary
-	}
+	resBody, statusCode := sendRequest("POST", "/organisation/accounts", string(reqBody))
 
-	// casting from/to
 	if statusCode >= 200 && statusCode <= 299 { // successful creation
 		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&account)
 	} else if statusCode >= 400 && statusCode <= 499 { // bad request
@@ -114,11 +110,7 @@ func (ApiClientConnection) FetchAccount(accountId string) (AccountRequest, []str
 		return account, []string{"invalid account id"}
 	}
 
-	resBody, statusCode, e := sendRequest("GET", "/organisation/accounts/"+accountId, "")
-	if e != nil {
-		log.Fatal(e.Error())
-		return account, strings.Split(e.Error(), "\n")
-	}
+	resBody, statusCode := sendRequest("GET", "/organisation/accounts/"+accountId, "")
 	if statusCode >= 200 && statusCode <= 299 { // successful creation
 		json.NewDecoder(bytes.NewBuffer(resBody)).Decode(&account)
 	} else {
@@ -134,12 +126,7 @@ func (ApiClientConnection) DeleteAccount(accountId string) error {
 	if e != nil || id == uuid.Nil {
 		return errors.New("invalid account id")
 	}
-	_, statusCode, e := sendRequest("DELETE", "/organisation/accounts/"+accountId+"?version=1", "")
-	if e != nil {
-		log.Fatal(e)
-		return e
-	}
-
+	_, statusCode := sendRequest("DELETE", "/organisation/accounts/"+accountId+"?version=1", "")
 	if statusCode == 204 {
 		return nil
 	}

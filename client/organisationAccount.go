@@ -10,6 +10,7 @@ type OrganisationAccount struct {
 	AlternativeNames []string
 	CurrencyCode     string
 	AccountNumber    string
+	isReady          bool
 }
 
 var orgAccount OrganisationAccount
@@ -17,10 +18,8 @@ var orgAccount OrganisationAccount
 const maxNames = 4
 const maxAltNames = 3
 
-var isReady bool
-
 func (OrganisationAccount) IsReady() bool {
-	return isReady
+	return orgAccount.isReady
 }
 
 // Maximum of 4 calls/Names extra items will be discarded.
@@ -68,11 +67,11 @@ func (OrganisationAccount) WithIban(iban string) OrganisationAccount {
 func (OrganisationAccount) Build(countryCode string, holderName string) OrganisationAccount {
 	orgAccount.Country = countryCode
 	orgAccount.WithName(holderName)
-	isReady = true
+	orgAccount.isReady = true
 	return orgAccount
 }
 
 func (OrganisationAccount) Cleanup() {
 	orgAccount = OrganisationAccount{}
-	isReady = false
+	orgAccount.isReady = false
 }
