@@ -32,18 +32,18 @@ func TestCreateAccount_ReturnsCreatedAccount(t *testing.T) {
 
 	t.Run("TestFetchAccount", func(t *testing.T) {
 		foundAccount, e := client.FetchAccount(account.ID)
-		if (len(e) > 0 || foundAccount == accountapiclient.AccountData{}) {
-			t.Fatalf("expected account with no errors, recieved '%s'", fmt.Sprint(len(e)))
+		if (e != nil || foundAccount == accountapiclient.AccountData{}) {
+			t.Fatalf("expected account with no errors")
 		}
 
 		t.Run("TestDeleteAccount", func(t *testing.T) {
 			e := client.DeleteAccount(account.ID)
-			if len(e) > 0 {
-				t.Fatalf("expected no errors, received '%s'", fmt.Sprint(len(e)))
+			if e != nil {
+				t.Fatalf("expected no errors, received '%s'", e.Error())
 			}
 
 			a, e := client.FetchAccount(account.ID)
-			if (len(e) == 0 || a != accountapiclient.AccountData{}) {
+			if (e == nil || a != accountapiclient.AccountData{}) {
 				t.Fatalf("did not expect to find account '%s', supposed to be deleted", fmt.Sprint(account.ID))
 			}
 		})
@@ -51,6 +51,7 @@ func TestCreateAccount_ReturnsCreatedAccount(t *testing.T) {
 }
 
 func TestCreateAccount_ReturnsError_WhenApiIsDown(t *testing.T) {
+	// WARNING, it is expected for the request to timeout
 	client := CreateClient("http://localhost:9292")
 	country := "CA"
 	version := int64(1)
@@ -65,7 +66,7 @@ func TestCreateAccount_ReturnsError_WhenApiIsDown(t *testing.T) {
 		},
 	})
 
-	if len(e) <= 0 {
-		t.Errorf("expected remote host error, received '%s'", fmt.Sprint(e))
+	if e == nil {
+		t.Errorf("expected remote host error")
 	}
 }

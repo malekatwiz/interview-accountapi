@@ -4,10 +4,10 @@ import (
 	"accountapiclient"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 )
@@ -16,9 +16,9 @@ var CurrnetVersion string
 var apiAddress string
 
 type Client interface {
-	CreateAccount(account accountapiclient.AccountData) (accountapiclient.AccountData, []string)
-	FetchAccount(accountId string) (accountapiclient.AccountData, []string)
-	DeleteAccount(accountId string) []string
+	CreateAccount(account accountapiclient.AccountData) (accountapiclient.AccountData, error)
+	FetchAccount(accountId string) (accountapiclient.AccountData, error)
+	DeleteAccount(accountId string) error
 }
 
 type ApiClientV1 struct{}
@@ -55,42 +55,36 @@ func sendRequest(method string, endpoint string, requestBody string) ([]byte, in
 	return responsecontent, response.StatusCode
 }
 
-func (ApiClientV1) CreateAccount(account accountapiclient.AccountData) (accountapiclient.AccountData, []string) {
+func (ApiClientV1) CreateAccount(account accountapiclient.AccountData) (accountapiclient.AccountData, error) {
 	if (account == accountapiclient.AccountData{}) {
-		return accountapiclient.AccountData{}, []string{"invalid input"}
+		return accountapiclient.AccountData{}, errors.New("invalid input")
 	}
 
-	var errors []string
 	requestbody, e := json.Marshal(accountapiclient.Account{
 		AccountData: account,
 	})
 	if e != nil {
 		log.Print(e.Error())
-		return accountapiclient.AccountData{}, []string{"invalid input structure"}
+		return accountapiclient.AccountData{}, errors.New("invalid input structure")
 	}
 
-	var newaccount accountapiclient.AccountData
+	var newaccount accountapiclient.Account
 	response, statuccode := sendRequest("POST", "/organisation/accounts", string(requestbody))
 	if statuccode >= 200 && statuccode <= 299 {
 		json.NewDecoder(bytes.NewBuffer(response)).Decode(&newaccount)
+		return newaccount.AccountData, nil
 	} else if statuccode >= 400 && statuccode <= 499 {
 		var apierrors accountapiclient.ApiErrors
 		json.NewDecoder(bytes.NewBuffer(response)).Decode(&apierrors)
-		errors = append(errors, strings.Split(apierrors.ErrorMessage, "\n")...)
-	} else {
-		errors = append(errors, "somethign went wrong, try again")
+		return accountapiclient.AccountData{}, errors.New(apierrors.ErrorMessage)
 	}
-
-	if len(errors) > 0 {
-		return accountapiclient.AccountData{}, errors
-	}
-	return account, nil
+	return accountapiclient.AccountData{}, errors.New("somethign went wrong, try again")
 }
 
-func (ApiClientV1) FetchAccount(accountId string) (accountapiclient.AccountData, []string) {
+func (ApiClientV1) FetchAccount(accountId string) (accountapiclient.AccountData, error) {
 	var account accountapiclient.Account
 	if !isValidUUID(accountId) {
-		return accountapiclient.AccountData{}, []string{"invalid account id"}
+		return accountapiclient.AccountData{}, errors.New("invalid account id")
 	}
 
 	responsebody, statuscode := sendRequest("GET", "/organisation/accounts/"+accountId, "")
@@ -99,15 +93,15 @@ func (ApiClientV1) FetchAccount(accountId string) (accountapiclient.AccountData,
 	} else {
 		var apiError accountapiclient.ApiErrors
 		json.NewDecoder(bytes.NewBuffer(responsebody)).Decode(&apiError)
-		return accountapiclient.AccountData{}, strings.Split(apiError.ErrorMessage, "\n")
+		return accountapiclient.AccountData{}, errors.New(apiError.ErrorMessage)
 	}
 
 	return account.AccountData, nil
 }
 
-func (ApiClientV1) DeleteAccount(accountId string) []string {
+func (ApiClientV1) DeleteAccount(accountId string) error {
 	if !isValidUUID(accountId) {
-		return []string{"invalid account id"}
+		return errors.New("invalid account id")
 	}
 
 	_, statuscode := sendRequest("DELETE", "/organisation/accounts/"+accountId+"?version=0", "")
@@ -116,9 +110,9 @@ func (ApiClientV1) DeleteAccount(accountId string) []string {
 	}
 
 	if statuscode == 404 {
-		return []string{"account cannot be found"}
+		return errors.New("account cannot be found")
 	}
-	return []string{"something went wrong, try again"}
+	return errors.New("something went wrong, try again")
 }
 
 func isValidUUID(accountId string) bool {

@@ -12,13 +12,14 @@ import (
 
 func TestCreateAccount_ReturnsOneError_WhenInputIsEmpty(t *testing.T) {
 	client := CreateClient("http://localhost:8080")
+
 	_, errors := client.CreateAccount(accountapiclient.AccountData{})
-	if len(errors) != 1 {
-		t.Errorf("expected one error, received '%s'", fmt.Sprint(len(errors)))
+	if errors == nil {
+		t.Errorf("expected one error")
 	}
 
-	if errors[0] != "invalid input" {
-		t.Errorf("expected invalid input error, received '%s'", errors[0])
+	if errors.Error() != "invalid input" {
+		t.Errorf("expected invalid input error, received '%s'", errors.Error())
 	}
 }
 
@@ -60,8 +61,8 @@ func TestCreateAccount_ReturnsNoErrors_WhenCrationIsSuccessful(t *testing.T) {
 		},
 	})
 
-	if len(errors) > 0 {
-		t.Errorf("expected no errors, received '%s'", fmt.Sprint(len(errors)))
+	if errors != nil {
+		t.Errorf("expected no errors")
 	}
 }
 
@@ -99,7 +100,7 @@ func TestCreateAccount_ReturnsCreatedAccount_WhenCreationIsSuccessful(t *testing
 		Type:           "accounts",
 		Attributes: &accountapiclient.AccountAttributes{
 			Country: &country,
-			Name:    []string{"Malek"},
+			Name:    []string{"M"},
 		},
 	})
 
@@ -107,17 +108,16 @@ func TestCreateAccount_ReturnsCreatedAccount_WhenCreationIsSuccessful(t *testing
 		t.Fatalf("expected account with data, received '%s'", fmt.Sprint(account))
 	}
 
-	if account.Attributes.Name[0] != "Malek" {
-		t.Fatalf("expected account with name 'Malek', received '%s'", account.Attributes.Name[0])
+	if account.Attributes.Name[0] != "M" {
+		t.Fatalf("expected account with name 'M', received '%s'", account.Attributes.Name[0])
 	}
 }
 
 func TestCreateAccount_ReturnsValidationErrors_WhenCreationFails(t *testing.T) {
+	expectederror := "validation error"
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(400)
-		rw.Write([]byte(`{
-			"error_message": "validation failure list:\nvalidation failure list:\nvalidation failure list:\ncountry in body should match '^[A-Z]{2}$'"
-		}`))
+		rw.Write([]byte(`{"error_message": "validation error"}`))
 	}))
 	defer server.Close()
 
@@ -133,12 +133,12 @@ func TestCreateAccount_ReturnsValidationErrors_WhenCreationFails(t *testing.T) {
 		},
 	})
 
-	if len(errors) < 2 {
-		t.Errorf("expected more than one error, received '%s'", fmt.Sprint(len(errors)))
+	if errors == nil {
+		t.Errorf("expected validation errors")
 	}
 
-	if errors[3] != "country in body should match '^[A-Z]{2}$'" {
-		t.Errorf("expected 'country in body should match '^[A-Z]{2}$'' error, received '%s'", errors[0])
+	if errors.Error() != expectederror {
+		t.Errorf("expected '%s' error, received '%s'", expectederror, errors.Error())
 	}
 }
 
@@ -161,36 +161,36 @@ func TestCreateAccount_ReturnsOneError_WhenCreationCrashes(t *testing.T) {
 		},
 	})
 
-	if len(errors) != 1 {
-		t.Errorf("expected one error, received '%s'", fmt.Sprint(len(errors)))
+	if errors == nil {
+		t.Errorf("expected one error")
 	}
 
-	if errors[0] != "somethign went wrong, try again" {
-		t.Errorf("expected 'somethign went wrong, try again' error, received '%s'", errors[0])
+	if errors.Error() != "somethign went wrong, try again" {
+		t.Errorf("expected 'somethign went wrong, try again' error, received '%s'", errors.Error())
 	}
 }
 
 func TestFetchAccount_ReturnsError_WhenAccountIdIsInvalid(t *testing.T) {
 	client := CreateClient("http://localhost:8080")
 	_, errors := client.FetchAccount("")
-	if len(errors) != 1 {
-		t.Errorf("expected an error, received, '%s'", fmt.Sprint(len(errors)))
+	if errors == nil {
+		t.Errorf("expected an error")
 	}
 
-	if errors[0] != "invalid account id" {
-		t.Errorf("expected 'invalid account id' error, received, '%s'", errors[0])
+	if errors.Error() != "invalid account id" {
+		t.Errorf("expected 'invalid account id' error, received, '%s'", errors.Error())
 	}
 }
 
 func TestFetchAccount_ReturnsError_WhenAccountIdIsEmpty(t *testing.T) {
 	client := CreateClient("http://localhost:8080")
 	_, errors := client.FetchAccount("00000000-0000-0000-0000-000000000000")
-	if len(errors) != 1 {
-		t.Errorf("expected an error, received, '%s'", fmt.Sprint(len(errors)))
+	if errors == nil {
+		t.Errorf("expected an error")
 	}
 
-	if errors[0] != "invalid account id" {
-		t.Errorf("expected 'invalid account id' error, received, '%s'", errors[0])
+	if errors.Error() != "invalid account id" {
+		t.Errorf("expected 'invalid account id' error, received, '%s'", errors.Error())
 	}
 }
 
@@ -203,8 +203,8 @@ func TestFetchAccount_ReturnsErrors_WhenRequestFailsInternally(t *testing.T) {
 
 	client := CreateClient(server.URL)
 	_, errors := client.FetchAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
-	if len(errors) <= 0 {
-		t.Errorf("expected at least one error, received '%s'", fmt.Sprint(len(errors)))
+	if errors == nil {
+		t.Errorf("expected at least one error")
 	}
 }
 
@@ -236,8 +236,8 @@ func TestFetchAccount_ReturnsNoErrors_WhenAccountIsFound(t *testing.T) {
 
 	client := CreateClient(server.URL)
 	account, errors := client.FetchAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
-	if (account == accountapiclient.AccountData{} || len(errors) > 0) {
-		t.Errorf("expected to get Account, and no errors, received '%s'", fmt.Sprint(len(errors)))
+	if (account == accountapiclient.AccountData{} || errors != nil) {
+		t.Errorf("expected to get Account, and no errors")
 	}
 }
 
@@ -284,12 +284,12 @@ func TestDeleteAccount_ReturnsAnError_WhenAccountIsInvalid(t *testing.T) {
 
 	client := CreateClient(server.URL)
 	e := client.DeleteAccount("")
-	if len(e) == 0 {
+	if e == nil {
 		t.Errorf("expected an error, received 0")
 	}
 
-	if e[0] != "invalid account id" {
-		t.Errorf("expected 'invalid account id' error, : '%s'", e[0])
+	if e.Error() != "invalid account id" {
+		t.Errorf("expected 'invalid account id' error, : '%s'", e.Error())
 	}
 }
 
@@ -302,12 +302,12 @@ func TestDeleteAccount_ReturnsAnError_WhenAccountIsNotFound(t *testing.T) {
 
 	client := CreateClient(server.URL)
 	e := client.DeleteAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
-	if len(e) == 0 {
+	if e == nil {
 		t.Errorf("expected an error, received 0")
 	}
 
-	if e[0] != "account cannot be found" {
-		t.Errorf("expected 'account cannot be found' error, received %s", e[0])
+	if e.Error() != "account cannot be found" {
+		t.Errorf("expected 'account cannot be found' error, received %s", e.Error())
 	}
 }
 
@@ -320,12 +320,12 @@ func TestDeleteAccount_ReturnsAnError_WhenDeleteRequestFails(t *testing.T) {
 
 	client := CreateClient(server.URL)
 	e := client.DeleteAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
-	if len(e) == 0 {
+	if e == nil {
 		t.Errorf("expected an error, received 0")
 	}
 
-	if e[0] != "something went wrong, try again" {
-		t.Errorf("expected 'something went wrong, try again' error, received %s", e[0])
+	if e.Error() != "something went wrong, try again" {
+		t.Errorf("expected 'something went wrong, try again' error, received %s", e.Error())
 	}
 }
 
@@ -338,7 +338,7 @@ func TestDeleteAccount_ReturnsNoError_WhenAccountDeletedSuccessfully(t *testing.
 
 	client := CreateClient(server.URL)
 	e := client.DeleteAccount("49dac5ee-6ffb-4bb3-a24d-9c36d4f4ca36")
-	if len(e) > 0 {
-		t.Errorf("expected no errors, received '%s'", fmt.Sprint(len(e)))
+	if e != nil {
+		t.Errorf("expected no errors, received '%s'", e.Error())
 	}
 }
